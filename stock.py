@@ -8,9 +8,9 @@ import re
 import time
 from collections import namedtuple
 from typing import Tuple
-
+from enum import Enum
 import requests
-
+import analysis
 INIT_MONEY = 100_000
 
 class ConfigLoader:
@@ -41,15 +41,14 @@ class GetTicker:
         self.api_key = self.config_loader.get_api_key()
         self.current_year = datetime.now().year
         self.current_month = datetime.now().month
+        self.time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    def latestData(self, date=None, interval:str='5min') -> dict:
+    def latestData(self, date=None, interval:str='5min', time_series:str='TIME_SERIES_INTRADAY') -> None:
         if self.config_loader.source == 'alphavantage':
             if date is None:
-                url = f"{self.api_url}query?function=TIME_SERIES_INTRADAY&symbol={self.symbol}&interval={interval}&outputsize=full&apikey={self.api_key}&datatype=csv"
+                url = f"{self.api_url}query?function={time_series}&symbol={self.symbol}&interval={interval}&outputsize=full&apikey={self.api_key}&datatype=csv"
                 response = requests.get(url)
                 data = response.text
-                time_now = datetime.now()
-                time_str = time_now.strftime("%Y-%m-%d_%H-%M-%S")
             
             else:
                 if not re.match(r'\d{4}-\d{2}', date) :
@@ -61,12 +60,12 @@ class GetTicker:
                 elif year > self.current_year or (year == self.current_year and month > self.current_month):
                     raise ValueError("You cannot get future data. Current date is " + str(self.current_year) + '-' + str(self.current_month) + '.')
                 
-                url = f"{self.api_url}query?function=TIME_SERIES_INTRADAY&symbol={self.symbol}&interval={interval}&month={date}&outputsize=full&apikey={self.api_key}&datatype=csv"
+                url = f"{self.api_url}query?function={time_series}&symbol={self.symbol}&interval={interval}&month={date}&outputsize=full&apikey={self.api_key}&datatype=csv"
                 response = requests.get(url)
                 data = response.text
-                time_str = date
+                self.time_str = date
 
-            file_path = f'{self.symbol}_{time_str}.csv'
+            file_path = f'{self.symbol}_{self.time_str}.csv'
             with open(file_path, 'w') as f:
                 f.write(data)
 
@@ -82,11 +81,12 @@ class GetTicker:
                 unix_timestamp = int(time.mktime(dt.timetuple()))
                 row.append(unix_timestamp)
 
+            data = [data[0]] + data[1:][::-1]
             with open(file_path, 'w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerows(data)
 
-    def longData(self, start_date=None, end_date=None, interval:str='5min') -> dict:
+    def longData(self, start_date=None, end_date=None, interval:str='5min') -> None:
         if self.config_loader.source == 'alphavantage':
             if start_date is None:
                 start_date = f'{self.current_year}-01'
@@ -109,6 +109,33 @@ class GetTicker:
                     date = f'{year}-{month:02}'
                     self.latestData(date, interval)
 
+    def getNews(self, topics:str=None, time_from:int=None, time_to:int=None, num:int=50, sort:str='LATEST') -> None:
+        if time_from is not None:
+            _time_from  = f"&from={time_from}"
+        else:
+            _time_from = ''       
+        if time_to is not None:
+            _time_to = f"&to={time_to}"
+        else:
+            _time_to = ''       
+        if topics is not None:
+            _topics = f"&topics={topics}"
+        else:
+            _topics = ''
+
+        url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={self.symbol}{_topics}{_time_from}{_time_to}&limit={num}&sort={sort}&apikey={self.api_key}"
+        response = requests.get(url)
+        data = response.json()
+        
+        with open(f'{self.symbol}_news{self.time_str}.json', 'w') as f:
+            json.dump(data, f, indent=4)
+    
+    def newsAnalysis(self, news_path:json=None) -> dict:
+        with open(news_path, 'r') as f:
+            news = json.load(f)
+        result = analysis.NewsAnalysis(news)
+        
+        return result.get_summary()
 
 class Simulate:
     # Data is stored in username.csv
