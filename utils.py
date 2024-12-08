@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from transformers import AutoTokenizer
 from urllib.parse import urlparse
 import glob
@@ -89,8 +89,10 @@ class Analysis:
             "Accept-Language": "en-US,en;q=0.9",
             "Connection": "keep-alive",
         }
+        options = Options()
+        options.add_argument("--headless")
         try:
-            driver = webdriver.Chrome()
+            driver = webdriver.Chrome(options=options)
             driver.get(url)
             content = driver.page_source
             # response = requests.get(url, headers=headers, timeout=10)
