@@ -111,11 +111,11 @@ class GetTicker:
 
     def getNews(self, topics:str=None, time_from:int=None, time_to:int=None, num:int=50, sort:str='LATEST') -> None:
         if time_from is not None:
-            _time_from  = f"&from={time_from}"
+            _time_from  = f"&time_from={time_from}"
         else:
             _time_from = ''       
         if time_to is not None:
-            _time_to = f"&to={time_to}"
+            _time_to = f"&time_to={time_to}"
         else:
             _time_to = ''       
         if topics is not None:
@@ -124,11 +124,20 @@ class GetTicker:
             _topics = ''
 
         url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={self.symbol}{_topics}{_time_from}{_time_to}&limit={num}&sort={sort}&apikey={self.api_key}"
+        print(url)
         response = requests.get(url)
+        # response = requests.get('https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo')
         data = response.json()
         
-        with open(f'{self.symbol}_news{self.time_str}.json', 'w') as f:
-            json.dump(data, f, indent=4)
+        if time_from is not None and time_to is not None:
+            with open(f'{self.symbol}_news{time_from}_{time_to}.json', 'w') as f:
+                json.dump(data, f, indent=4)
+        if time_from is not None and time_to is None:
+            with open(f'{self.symbol}_news{time_from}.json', 'w') as f:
+                json.dump(data, f, indent=4)
+        else:
+            with open(f'{self.symbol}_news{self.time_str}.json', 'w') as f:
+                json.dump(data, f, indent=4)
     
     def newsAnalysis(self, news_path:json=None) -> dict:
         with open(news_path, 'r') as f:
