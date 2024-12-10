@@ -40,11 +40,13 @@ class GetDataset:
         df.to_csv(self.output_path, index=False)
 
 class CombineDataset:
-    def __init__(self, files_path:str, output_path:str) -> None:
+    def __init__(self) -> None:
+        self.files_path = None
+        self.output_path = None
+    
+    def multi_combine(self, files_path:str, output_path:str) -> None:
         self.files_path = files_path
         self.output_path = output_path
-    
-    def combine(self) -> None:
         files_list = sorted(glob.glob(self.files_path))
         combined_df = pd.DataFrame()
         for file in files_list:
@@ -52,6 +54,12 @@ class CombineDataset:
             combined_df = pd.concat([combined_df, df], ignore_index=True)
         
         combined_df.to_csv(self.output_path, index=False)
+    
+    def combine2(self, file_path1:str, file_path2:str, output_path:str) -> None:
+        df1 = pd.read_csv(file_path1)
+        df2 = pd.read_csv(file_path2)
+        combined_df = pd.concat([df1, df2], ignore_index=True)
+        combined_df.to_csv(output_path, index=False)
     
 class Analysis:
     def __init__(self, dataset_path:str) -> None:
@@ -91,6 +99,7 @@ class Analysis:
         }
         options = Options()
         options.add_argument("--headless")
+        skip = False
         try:
             driver = webdriver.Chrome(options=options)
             driver.get(url)
@@ -216,22 +225,42 @@ class Analysis:
                 div = soup.find('div', class_="article-section__body__news")
                 if div:
                     article = div.text.strip()
-                    article = " ".join(article.split())           
+                    article = " ".join(article.split())   
+            elif source_domain in ["theweek.com", "www.ft.com", "www.kiplinger.com"]:
+                div = soup.find('div', id="article-body")
+                if div:
+                    article = div.text.strip()
+                    article = " ".join(article.split())
+            elif source_domain == "africa.businessinsider.com":
+                div = soup.find('div', class_="container-wrapper")
+                if div:
+                    article = div.text.strip()
+                    article = " ".join(article.split())
+            elif source_domain == "":
+                div = soup.find('div', class_="")
+                if div:
+                    article = div.text.strip()
+                    article = " ".join(article.split())
             else:
                 print(f"Source domain {source_domain} not supported. Skipping...")
+                skip = True
                 pass
             print(article)
             driver.quit()
             return article
         except Exception as e:
-            print(f"You might be blocked by {source_domain} or url: {url} is wrong. Error: {e}")
+            if not skip:
+                print(f"You might be blocked by {source_domain} or url: {url} is wrong. Error: {e}")
+            else:
+                print(f"Error: {e}")
             return None
     
     def remove_resources(self, output_path=None) -> None:
         self.read_csv()
-        # Pay wall: www.cnbc.com, www.barrons.com
+        # Pay wall: www.cnbc.com, www.barrons.com, www.economist.com, www.wsj.com
         # Website down: stockmarket.com,
-        sources_to_remove = ["www.cnbc.com", "stockmarket.com", "www.barrons.com"]
+        # Hard to get article: www.benzinga.com
+        sources_to_remove = ["www.cnbc.com", "stockmarket.com", "www.barrons.com", "www.benzinga.com", "www.economist.com", "www.wsj.com"]
         if output_path is None:
             output_path = self.dataset_path.replace(".csv", "_cleaned.csv")
         if 'source' in self.data.columns:
@@ -282,6 +311,11 @@ class Analysis:
         if output_path is None:
             output_path = self.dataset_path.replace(".csv", "_filtered.csv")
         filtered_df.to_csv(output_path, index=False)
+
+    def get_empty(self) -> None:
+        self.read_csv()
+        empty_articles = self.data[self.data['article'].isna() | (self.data['article'] == '')]
+        empty_articles.to_csv(self.dataset_path.replace(".csv", "_empty.csv"), index=False)
 
     def count_sentiment(self) -> None:
         self.read_csv()

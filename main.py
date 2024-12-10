@@ -9,7 +9,7 @@ llm = FinBERTSentimentAnalyzer(
     num_epochs = 3
 )
 
-dataset_path = "AAPL_filtered.csv"
+dataset_path = "DATA.csv"
 dataset = llm.load_and_preprocess_data(dataset_path)
 tokenized_dataset = llm.prepare_datasets(dataset)
 llm.train_model(
