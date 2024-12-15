@@ -5,4 +5,5 @@ __pycache__/
 finbert*/
 *.txt
 *.log
-data
+data/
+lstm/

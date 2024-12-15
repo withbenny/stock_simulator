@@ -43,7 +43,7 @@ class GetTicker:
         self.current_month = datetime.now().month
         self.time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    def latestData(self, date=None, interval:str='5min', time_series:str='TIME_SERIES_INTRADAY') -> None:
+    def latest_data(self, date=None, interval:str='5min', time_series:str='TIME_SERIES_INTRADAY') -> None:
         if self.config_loader.source == 'alphavantage':
             if date is None:
                 url = f"{self.api_url}query?function={time_series}&symbol={self.symbol}&interval={interval}&outputsize=full&apikey={self.api_key}&datatype=csv"
@@ -86,7 +86,7 @@ class GetTicker:
                 writer = csv.writer(f)
                 writer.writerows(data)
 
-    def longData(self, start_date=None, end_date=None, interval:str='5min') -> None:
+    def long_data(self, start_date=None, end_date=None, interval:str='5min') -> None:
         if self.config_loader.source == 'alphavantage':
             if start_date is None:
                 start_date = f'{self.current_year}-01'
@@ -109,7 +109,7 @@ class GetTicker:
                     date = f'{year}-{month:02}'
                     self.latestData(date, interval)
 
-    def getNews(self, topics:str=None, time_from:int=None, time_to:int=None, num:int=50, sort:str='LATEST') -> None:
+    def get_news(self, topics:str=None, time_from:int=None, time_to:int=None, num:int=50, sort:str='LATEST') -> None:
         if time_from is not None:
             _time_from  = f"&time_from={time_from}"
         else:
@@ -117,7 +117,7 @@ class GetTicker:
         if time_to is not None:
             _time_to = f"&time_to={time_to}"
         else:
-            _time_to = ''       
+            _time_to = ''
         if topics is not None:
             _topics = f"&topics={topics}"
         else:
@@ -197,7 +197,7 @@ class Simulate:
         else:
             return False
 
-    def currentCash(self) -> float:
+    def current_cash(self) -> float:
         return self.cash
 
     def trade(self, symbol: str, mode: str, share: float) -> None:
@@ -254,7 +254,7 @@ class Simulate:
         print(str(self.holdings))
         self.saveData()
 
-    def saveData(self) -> None:
+    def save_data(self) -> None:
         # Save the data
         with open(self.username + '.csv', 'w', newline='') as csvfile:
             headers = ['symbol', 'quantity']

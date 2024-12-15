@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime
 
 class GetDataset:
-    def __init__(self, input_path:str, output_path:str) -> None:
+    def __init__(self, input_path: str, output_path: str) -> None:
         self.input_path = input_path
         self.output_path = output_path
         self.data = None
@@ -21,7 +21,7 @@ class GetDataset:
         with open(self.input_path, 'r') as file:
             self.data = json.load(file)
     
-    def get(self, symbol:str) -> None:
+    def get(self, symbol: str) -> None:
         self.read_json()
         data = []
         for content in self.data['feed']:
@@ -44,7 +44,7 @@ class CombineDataset:
         self.files_path = None
         self.output_path = None
     
-    def multi_combine(self, files_path:str, output_path:str) -> None:
+    def multi_combine(self, files_path: str, output_path: str) -> None:
         self.files_path = files_path
         self.output_path = output_path
         files_list = sorted(glob.glob(self.files_path))
@@ -55,14 +55,27 @@ class CombineDataset:
         
         combined_df.to_csv(self.output_path, index=False)
     
-    def combine2(self, file_path1:str, file_path2:str, output_path:str) -> None:
+    def combine2(self, file_path1: str, file_path2: str, output_path: str) -> None:
         df1 = pd.read_csv(file_path1)
         df2 = pd.read_csv(file_path2)
         combined_df = pd.concat([df1, df2], ignore_index=True)
         combined_df.to_csv(output_path, index=False)
+
+    def results_combine(self, files_path: str, output_path: str) -> None:
+        new_order = ["symbol", "url", "sentiment", "time", "source", "article"]
+        merged_df = pd.DataFrame(columns=new_order)
+        for file in files_path:
+            df = pd.read_csv(file)
+            check_cols = [col for col in new_order if col in df.columns]
+            if check_cols:
+                print(f"File: {file} is missing columns: {', '.join(check_cols)}")
+            df = df[new_order]
+            merged_df = pd.concat([merged_df, df], ignore_index=True)
+        
+        merged_df.to_csv(output_path, index=False)
     
-class Analysis:
-    def __init__(self, dataset_path:str) -> None:
+class WebCrawler:
+    def __init__(self, dataset_path: str) -> None:
         self.dataset_path = dataset_path
         self.data = None
     
@@ -88,7 +101,7 @@ class Analysis:
         self.data['article'] = self.data.apply(lambda row: self.fetch_article(row['url'], row['source']), axis=1)
         self.data.to_csv(self.dataset_path, index=False)
     
-    def fetch_article(self, url:str, source_domain:str) -> str:
+    def fetch_article(self, url: str, source_domain: str) -> str:
         ua = UserAgent()
         headers = {
             "User-Agent": ua.random,
@@ -255,7 +268,7 @@ class Analysis:
                 print(f"Error: {e}")
             return None
     
-    def remove_resources(self, output_path=None) -> None:
+    def remove_resources(self, output_path: str = None) -> None:
         self.read_csv()
         # Pay wall: www.cnbc.com, www.barrons.com, www.economist.com, www.wsj.com
         # Website down: stockmarket.com,
@@ -288,7 +301,7 @@ class Analysis:
         print(f"Max token length: {max_length}")
         return max_length
 
-    def dataset_filter(self, min_length:int=20, max_length:int=None, output_path:str=None) -> None:
+    def dataset_filter(self, min_length: int = 20, max_length: int = None, output_path: str = None) -> None:
         self.read_csv()
         tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
         

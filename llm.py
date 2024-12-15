@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 
 class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None) -> None:
+    def compute_loss(self, model: torch.nn.Module, inputs: dict, return_outputs: bool = False, num_items_in_batch: int = None) -> torch.Tensor:
         labels = inputs.pop("labels")
         outputs = model(**inputs)
         logits = outputs.logits
@@ -25,8 +25,8 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
     
 class FinBERTSentimentAnalyzer:
-    def __init__(self, model_path:str=None, model_name:str="ProsusAI/finbert", 
-                 max_length:int=512, batch_size:int=32, num_epochs:int=3, num_labels:int=3) -> None:
+    def __init__(self, model_path: str = None, model_name: str = "ProsusAI/finbert", 
+                 max_length: int = 512, batch_size: int = 32, num_epochs: int = 3, num_labels: int = 3) -> None:
         self.model_name = model_name
         self.max_length = max_length
         self.num_labels = num_labels
@@ -42,7 +42,7 @@ class FinBERTSentimentAnalyzer:
         tokenizer.model_max_length = self.max_length
         return tokenizer
     
-    def _initialize_model(self, model_path:str) -> AutoModelForSequenceClassification:
+    def _initialize_model(self, model_path: str) -> AutoModelForSequenceClassification:
         if model_path is not None:
             print(f"Loading model from {model_path}")
             model = AutoModelForSequenceClassification.from_pretrained(
@@ -58,7 +58,7 @@ class FinBERTSentimentAnalyzer:
         
         return model
     
-    def _chunk_text(self, text:str, overlap_size:int=50) -> list:
+    def _chunk_text(self, text: str, overlap_size: int = 50) -> list:
         encoding = self.tokenizer(
             text,
             truncation=False,
@@ -90,7 +90,7 @@ class FinBERTSentimentAnalyzer:
                 
         return chunks
     
-    def predict_sentiment(self, text:str, use_chunks:bool=True) -> dict:
+    def predict_sentiment(self, text: str, use_chunks: bool = True) -> dict:
         if not use_chunks:
             return self._predict_single(text)
 
@@ -123,7 +123,7 @@ class FinBERTSentimentAnalyzer:
         self.model = get_peft_model(self.model, lora_config)
         return self.model
     
-    def load_and_preprocess_data(self, file_path:str, test_spilt:float=0.2) -> Dataset:
+    def load_and_preprocess_data(self, file_path: str, test_spilt: float = 0.2) -> Dataset:
         df = pd.read_csv(file_path)
         sentiment_map = {
             'Bullish': 2,
@@ -134,7 +134,7 @@ class FinBERTSentimentAnalyzer:
         dataset = Dataset.from_pandas(df[['article', 'label']]).train_test_split(test_size=test_spilt)
         return dataset
     
-    def _tokenize_text(self, examples:dict) -> dict:
+    def _tokenize_text(self, examples: dict) -> dict:
         results = self.tokenizer(
             examples['article'],
             padding='max_length',
@@ -145,7 +145,7 @@ class FinBERTSentimentAnalyzer:
         results["labels"] = examples["label"]
         return results
     
-    def prepare_datasets(self, dataset:Dataset) -> Dataset:
+    def prepare_datasets(self, dataset: Dataset) -> Dataset:
         return dataset.map(
             self._tokenize_text,
             batched=True,
@@ -153,13 +153,13 @@ class FinBERTSentimentAnalyzer:
         )
     
     @staticmethod
-    def compute_metrics(eval_pred:tuple) -> dict:
+    def compute_metrics(eval_pred: tuple) -> dict:
         accuracy_metric = evaluate.load("accuracy")
         logits, labels = eval_pred
         predictions = torch.argmax(torch.tensor(logits), dim=-1)
         return accuracy_metric.compute(predictions=predictions.numpy(), references=labels)
     
-    def _predict_single(self, text:str) -> dict:
+    def _predict_single(self, text: str) -> dict:
         inputs = self.tokenizer(
             text, 
             return_tensors="pt", 
@@ -187,7 +187,7 @@ class FinBERTSentimentAnalyzer:
             }
         }
     
-    def _merge_chunk_results(self, chunk_results:list) -> dict:
+    def _merge_chunk_results(self, chunk_results: list) -> dict:
         avg_probs = {
             'Bearish': 0.0,
             'Neutral': 0.0,
@@ -214,7 +214,7 @@ class FinBERTSentimentAnalyzer:
             'probabilities': avg_probs
         }
             
-    def train_model(self, train_dataset:Dataset, eval_dataset:Dataset, output_dir:str="./finbert-lora-sentiment-final") -> AutoModelForSequenceClassification:
+    def train_model(self, train_dataset: Dataset, eval_dataset: Dataset, output_dir: str = "./finbert-lora-sentiment-final") -> AutoModelForSequenceClassification:
         self.prepare_for_training()
         
         training_args = TrainingArguments(
@@ -246,7 +246,7 @@ class FinBERTSentimentAnalyzer:
         trainer.save_model(output_dir)
         return self.model
 
-def test_finbert(model_path:str, texts:list) -> None:
+def test_finbert(model_path: str, texts: list) -> None:
     print("Loading model...")
     analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
     print("Model loaded!")
@@ -254,7 +254,7 @@ def test_finbert(model_path:str, texts:list) -> None:
     print("\Start testing...")
     for i, text in enumerate(texts, 1):
         tokens = len(analyzer.tokenizer.tokenize(text))
-        print(f"Text Length: {tokens} tokens")
+        print(f"\nText Length: {tokens} tokens")
         print("Text:", text[:100], "..." if len(text) > 100 else "")
         
         if tokens >= 512:
@@ -264,7 +264,6 @@ def test_finbert(model_path:str, texts:list) -> None:
             use_chunks = False
         result = analyzer.predict_sentiment(text, use_chunks=use_chunks)
         
-        print("\nResults:")
         print("Sentiment:", result['sentiment'])
         print("Probabilities:")
         for sentiment, prob in result['probabilities'].items():
