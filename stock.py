@@ -14,7 +14,7 @@ import analysis
 INIT_MONEY = 100_000
 
 class ConfigLoader:
-    def __init__(self, config_path:str, source:str) -> None:
+    def __init__(self, config_path: str, source: str) -> None:
         self.config_path = config_path
         self.source = source
         self.config = self._load_config()
@@ -34,7 +34,7 @@ class ConfigLoader:
         return self.config[source]['api_url']
 
 class GetTicker:
-    def __init__(self, symbol:str, config_loader:ConfigLoader) -> None:
+    def __init__(self, symbol: str, config_loader: ConfigLoader) -> None:
         self.symbol = symbol
         self.config_loader = config_loader
         self.api_url = self.config_loader.get_api_url()
@@ -43,7 +43,7 @@ class GetTicker:
         self.current_month = datetime.now().month
         self.time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    def latest_data(self, date=None, interval:str='5min', time_series:str='TIME_SERIES_INTRADAY') -> None:
+    def latest_data(self, date:str = None, interval: str = '5min', time_series: str = 'TIME_SERIES_INTRADAY') -> None:
         if self.config_loader.source == 'alphavantage':
             if date is None:
                 url = f"{self.api_url}query?function={time_series}&symbol={self.symbol}&interval={interval}&outputsize=full&apikey={self.api_key}&datatype=csv"
@@ -86,7 +86,7 @@ class GetTicker:
                 writer = csv.writer(f)
                 writer.writerows(data)
 
-    def long_data(self, start_date=None, end_date=None, interval:str='5min') -> None:
+    def long_data(self, start_date:str = None, end_date:str = None, interval: str = '5min') -> None:
         if self.config_loader.source == 'alphavantage':
             if start_date is None:
                 start_date = f'{self.current_year}-01'
@@ -109,7 +109,7 @@ class GetTicker:
                     date = f'{year}-{month:02}'
                     self.latestData(date, interval)
 
-    def get_news(self, topics:str=None, time_from:int=None, time_to:int=None, num:int=50, sort:str='LATEST') -> None:
+    def get_news(self, topics: str = None, time_from: int = None, time_to: int = None, num: int = 50, sort: str = 'LATEST') -> None:
         if time_from is not None:
             _time_from  = f"&time_from={time_from}"
         else:
@@ -139,7 +139,7 @@ class GetTicker:
             with open(f'{self.symbol}_news{self.time_str}.json', 'w') as f:
                 json.dump(data, f, indent=4)
     
-    def newsAnalysis(self, news_path:json=None) -> dict:
+    def news_analysis(self, news_path:json=None) -> dict:
         with open(news_path, 'r') as f:
             news = json.load(f)
         result = analysis.NewsAnalysis(news)
@@ -252,7 +252,7 @@ class Simulate:
             raise ValueError("Invalid trade mode.")
 
         print(str(self.holdings))
-        self.saveData()
+        self.save_data()
 
     def save_data(self) -> None:
         # Save the data
