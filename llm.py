@@ -246,12 +246,60 @@ class FinBERTSentimentAnalyzer:
         trainer.save_model(output_dir)
         return self.model
 
-def test_finbert(model_path: str, texts: list) -> None:
-    print("Loading model...")
-    analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
-    print("Model loaded!")
+class DistilrobertaSentimentAnalyzer(FinBERTSentimentAnalyzer):
+    def __init__(self, model_path: str = None, model_name: str = "mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis", 
+                 max_length: int = 512, batch_size: int = 32, num_epochs: int = 3, num_labels: int = 3) -> None:
+        super().__init__(
+            model_path=model_path, 
+            model_name=model_name, 
+            max_length=max_length, 
+            batch_size=batch_size, 
+            num_epochs=num_epochs, 
+            num_labels=num_labels
+        )
 
-    print("\Start testing...")
+    def train_model(self, train_dataset: Dataset, eval_dataset: Dataset, output_dir: str = "./distilroberta-lora-sentiment-final") -> AutoModelForSequenceClassification:
+        self.prepare_for_training()
+        
+        training_args = TrainingArguments(
+            output_dir=output_dir,
+            learning_rate=2e-4,
+            per_device_train_batch_size=self.batch_size,
+            per_device_eval_batch_size=self.batch_size,
+            num_train_epochs=self.num_epochs,
+            weight_decay=0.01,
+            eval_strategy="epoch",
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+            fp16=True,
+            lr_scheduler_type="cosine",
+            report_to="none",
+            save_total_limit=5
+        )
+        
+        trainer = CustomTrainer(
+            model=self.model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            compute_metrics=self.compute_metrics
+        )
+        
+        trainer.train()
+        print(f"Training complete! Saving model to {output_dir}")
+        trainer.save_model(output_dir)
+        return self.model
+
+def test_llm(model_path: str, texts: list) -> None:
+    print(f"Loading model from {model_path}...")
+    if model_path.startswith("finbert"):
+        analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
+    elif model_path.startswith("distilroberta"):
+        analyzer = DistilrobertaSentimentAnalyzer(model_path=model_path)
+    else:
+        raise ValueError("Invalid model path. Please specify and start with either 'finbert' or 'distilroberta'")
+
+    print("\nStart testing...")
     for i, text in enumerate(texts, 1):
         tokens = len(analyzer.tokenizer.tokenize(text))
         print(f"\nText Length: {tokens} tokens")

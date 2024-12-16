@@ -7,3 +7,4 @@ finbert*/
 *.log
 data/
 lstm/
+distilroberta*/
