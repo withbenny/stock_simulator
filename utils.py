@@ -273,7 +273,9 @@ class WebCrawler:
         # Pay wall: www.cnbc.com, www.barrons.com, www.economist.com, www.wsj.com
         # Website down: stockmarket.com,
         # Hard to get article: www.benzinga.com
-        sources_to_remove = ["www.cnbc.com", "stockmarket.com", "www.barrons.com", "www.benzinga.com", "www.economist.com", "www.wsj.com"]
+        # Error: consent.google.com
+        sources_to_remove = ["www.cnbc.com", "stockmarket.com", "www.barrons.com", "www.benzinga.com", "www.economist.com", "www.wsj.com",
+                             "consent.google.com"]
         if output_path is None:
             output_path = self.dataset_path.replace(".csv", "_cleaned.csv")
         if 'source' in self.data.columns:

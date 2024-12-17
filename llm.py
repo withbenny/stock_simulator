@@ -1,5 +1,4 @@
 from datasets import Dataset
-from datetime import datetime
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, TrainerCallback
 import evaluate
@@ -298,7 +297,7 @@ def test_llm(model_path: str, texts: list) -> None:
         analyzer = DistilrobertaSentimentAnalyzer(model_path=model_path)
     else:
         raise ValueError("Invalid model path. Please specify and start with either 'finbert' or 'distilroberta'")
-
+    
     print("\nStart testing...")
     for i, text in enumerate(texts, 1):
         tokens = len(analyzer.tokenizer.tokenize(text))

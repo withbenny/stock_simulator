@@ -1,4 +1,4 @@
-from llm import FinBERTSentimentAnalyzer, test_finbert, DistilrobertaSentimentAnalyzer
+from llm import FinBERTSentimentAnalyzer, test_llm, DistilrobertaSentimentAnalyzer
 from lstm import LSTMSentimentAnalyzer, test_lstm
 
 # llm = FinBERTSentimentAnalyzer(
@@ -19,7 +19,7 @@ from lstm import LSTMSentimentAnalyzer, test_lstm
 #     output_dir = "finbert_sentiment_model",
 # )
 
-# test_finbert(model_path="finbert_sentiment_model",
+# test_llm(model_path="finbert_sentiment_model",
 #              texts=[
 #                     "Apple's recent financial report shows that the company's profits have barely increase.",
 #             ])
