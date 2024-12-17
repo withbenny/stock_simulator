@@ -61,18 +61,25 @@ class CombineDataset:
         combined_df = pd.concat([df1, df2], ignore_index=True)
         combined_df.to_csv(output_path, index=False)
 
-    def results_combine(self, files_path: str, output_path: str) -> None:
+    def results_combine(self, results_path: str, output_path: str) -> None:
         new_order = ["symbol", "url", "sentiment", "time", "source", "article"]
+        results_list = sorted(glob.glob(results_path))
         merged_df = pd.DataFrame(columns=new_order)
-        for file in files_path:
-            df = pd.read_csv(file)
-            check_cols = [col for col in new_order if col in df.columns]
+        for result in results_list:
+            df = pd.read_csv(result)
+            check_cols = [col for col in new_order if col not in df.columns]
             if check_cols:
-                print(f"File: {file} is missing columns: {', '.join(check_cols)}")
+                print(f"File: {result} is missing columns: {', '.join(check_cols)}")
             df = df[new_order]
             merged_df = pd.concat([merged_df, df], ignore_index=True)
         
+        merged_df = merged_df.drop_duplicates(subset=['url'], keep='first')
         merged_df.to_csv(output_path, index=False)
+    
+    def remove_duplicates(self, input_path: str, output_path: str) -> None:
+        df = pd.read_csv(input_path)
+        df.drop_duplicates(subset=['url'], inplace=True)
+        df.to_csv(output_path, index=False)
     
 class WebCrawler:
     def __init__(self, dataset_path: str) -> None:
