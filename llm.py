@@ -346,7 +346,3 @@ class SentimentAnalyzerAPI:
     
     def run(self, host: str = '0.0.0.0', port: int = 8000):
         uvicorn.run(self.app, host=host, port=port)
-
-if __name__ == "__main__":
-    sentiment_api = SentimentAnalyzerAPI('finbert_sentiment_model/checkpoint-618')
-    sentiment_api.run(host='0.0.0.0', port=8000)
