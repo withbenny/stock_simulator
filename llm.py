@@ -1,9 +1,12 @@
 from datasets import Dataset
+from fastapi import FastAPI
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
+from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, TrainerCallback
 import evaluate
 import pandas as pd
 import torch
+import uvicorn
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model: torch.nn.Module, inputs: dict, return_outputs: bool = False, num_items_in_batch: int = None) -> torch.Tensor:
@@ -141,7 +144,7 @@ class FinBERTSentimentAnalyzer:
             max_length=self.max_length,
             return_tensors=None
         )
-        results["labels"] = examples["label"]
+        results['labels'] = examples['label']
         return results
     
     def prepare_datasets(self, dataset: Dataset) -> Dataset:
@@ -153,7 +156,7 @@ class FinBERTSentimentAnalyzer:
     
     @staticmethod
     def compute_metrics(eval_pred: tuple) -> dict:
-        accuracy_metric = evaluate.load("accuracy")
+        accuracy_metric = evaluate.load('accuracy')
         logits, labels = eval_pred
         predictions = torch.argmax(torch.tensor(logits), dim=-1)
         return accuracy_metric.compute(predictions=predictions.numpy(), references=labels)
@@ -161,7 +164,7 @@ class FinBERTSentimentAnalyzer:
     def _predict_single(self, text: str) -> dict:
         inputs = self.tokenizer(
             text, 
-            return_tensors="pt", 
+            return_tensors='pt', 
             padding=True, 
             truncation=True, 
             max_length=self.max_length
@@ -174,7 +177,7 @@ class FinBERTSentimentAnalyzer:
             predicted_class = torch.argmax(probabilities, dim=-1).item()
             class_probabilities = probabilities[0].tolist()
         
-        sentiment_mapping = {0: "Bearish", 1: "Neutral", 2: "Bullish"}
+        sentiment_mapping = {0: 'Bearish', 1: 'Neutral', 2: 'Bullish'}
         sentiment = sentiment_mapping[predicted_class]
         
         return {
@@ -206,7 +209,7 @@ class FinBERTSentimentAnalyzer:
             avg_probs['Bullish']
         ]
         predicted_class = class_probabilities.index(max(class_probabilities))
-        sentiment_mapping = {0: "Bearish", 1: "Neutral", 2: "Bullish"}
+        sentiment_mapping = {0: 'Bearish', 1: 'Neutral', 2: 'Bullish'}
         
         return {
             'sentiment': sentiment_mapping[predicted_class],
@@ -223,12 +226,12 @@ class FinBERTSentimentAnalyzer:
             per_device_eval_batch_size=self.batch_size,
             num_train_epochs=self.num_epochs,
             weight_decay=0.01,
-            eval_strategy="epoch",
-            save_strategy="epoch",
+            eval_strategy='epoch',
+            save_strategy='epoch',
             load_best_model_at_end=True,
             fp16=True,
-            lr_scheduler_type="cosine",
-            report_to="none",
+            lr_scheduler_type='cosine',
+            report_to='none',
             save_total_limit=5
         )
         
@@ -267,12 +270,12 @@ class DistilrobertaSentimentAnalyzer(FinBERTSentimentAnalyzer):
             per_device_eval_batch_size=self.batch_size,
             num_train_epochs=self.num_epochs,
             weight_decay=0.01,
-            eval_strategy="epoch",
-            save_strategy="epoch",
+            eval_strategy='epoch',
+            save_strategy='epoch',
             load_best_model_at_end=True,
             fp16=True,
-            lr_scheduler_type="cosine",
-            report_to="none",
+            lr_scheduler_type='cosine',
+            report_to='none',
             save_total_limit=5
         )
         
@@ -291,9 +294,9 @@ class DistilrobertaSentimentAnalyzer(FinBERTSentimentAnalyzer):
 
 def test_llm(model_path: str, texts: list) -> None:
     print(f"Loading model from {model_path}...")
-    if model_path.startswith("finbert"):
+    if model_path.startswith('finbert') or model_path.startswith('./finbert'):
         analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
-    elif model_path.startswith("distilroberta"):
+    elif model_path.startswith('distilroberta') or model_path.startswith('./distilroberta'):
         analyzer = DistilrobertaSentimentAnalyzer(model_path=model_path)
     else:
         raise ValueError("Invalid model path. Please specify and start with either 'finbert' or 'distilroberta'")
@@ -315,3 +318,35 @@ def test_llm(model_path: str, texts: list) -> None:
         print("Probabilities:")
         for sentiment, prob in result['probabilities'].items():
             print(f"{sentiment}: {prob:.4f}")
+
+class SentimentAnalyzerAPI:
+    def __init__(self, model_path: str):
+        self.model_path = model_path
+        if model_path.startswith('finbert') or model_path.startswith('./finbert'):
+            self.analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
+        elif model_path.startswith('distilroberta') or model_path.startswith('./distilroberta'):
+            self.analyzer = DistilrobertaSentimentAnalyzer(model_path=model_path)
+        else:
+            raise ValueError("Invalid model path. Must start with 'finbert' or 'distilroberta'.")
+        
+        self.app = FastAPI(title='Sentiment Analyzer API', version='0.1.0')
+
+        class TextPayload(BaseModel):
+            text: str
+            use_chunks: bool = True
+        
+        @self.app.get('/')
+        def root():
+            return {"message": "Welcome to the Sentiment Analyzer API!"}
+
+        @self.app.post('/analyze')
+        def analyze_sentiment(payload: TextPayload):
+            result = self.analyzer.predict_sentiment(payload.text, use_chunks=payload.use_chunks)
+            return result
+    
+    def run(self, host: str = '0.0.0.0', port: int = 8000):
+        uvicorn.run(self.app, host=host, port=port)
+
+if __name__ == "__main__":
+    sentiment_api = SentimentAnalyzerAPI('finbert_sentiment_model/checkpoint-618')
+    sentiment_api.run(host='0.0.0.0', port=8000)

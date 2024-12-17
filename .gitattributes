@@ -1,0 +1,2 @@
+*.ipynb text eol=lf linguist-language=Jupyter Notebook
+*.py linguist-language=Python
