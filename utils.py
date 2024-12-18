@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from sklearn.model_selection import train_test_split
 
 class GetDataset:
     def __init__(self, input_path: str, output_path: str) -> None:
@@ -81,22 +82,47 @@ class CombineDataset:
         df.drop_duplicates(subset=['url'], inplace=True)
         df.to_csv(output_path, index=False)
     
-    def split_data(self, input_path: str, output_path: str) -> None:
+    def split_data(self, input_path: str, train_output_path: str, test_output_path: str) -> None:
         df = pd.read_csv(input_path)
+        
         if 'sentiment' not in df.columns:
             raise ValueError("Sentiment column not found in dataset")
 
-        sentiment_counts= df['sentiment'].value_counts()
-        print(sentiment_counts)
+        sentiment_counts = df['sentiment'].value_counts()
+        print(f"Original sentiment counts: {sentiment_counts}")
         min_count = min(sentiment_counts)
 
-        balanced_df = []
-        for sentiment, count in sentiment_counts.items():
-            subset = df[df['sentiment'] == sentiment].sample(n=min_count, random_state=42)
-            balanced_df.append(subset)
-        balanced_df = pd.concat(balanced_df).sample(frac=1, random_state=42)
+        target_counts = {
+            'Bearish': min_count,
+            'Bullish': min_count * 3,
+            'Neutral': min_count * 4
+        }
 
-        balanced_df.to_csv(output_path, index=False)
+        train_dfs = []
+
+        for sentiment, count in target_counts.items():
+            subset = df[df['sentiment'] == sentiment]
+            if len(subset) < count:
+                raise ValueError(f"Not enough samples for sentiment '{sentiment}' to create the target dataset.")
+
+            train_subset = subset.sample(count, random_state=42)
+            train_dfs.append(train_subset)
+
+        train_df = pd.concat(train_dfs, ignore_index=True)
+
+        # Split train_df into train and test datasets (90%/10%)
+        train_final_df, test_df = train_test_split(train_df, test_size=0.1, random_state=42)
+
+        # Verify the sentiment distribution in both datasets
+        train_sentiments_counts = train_final_df['sentiment'].value_counts()
+        test_sentiments_counts = test_df['sentiment'].value_counts()
+
+        print(f"Final train sentiment counts: {train_sentiments_counts}")
+        print(f"Test sentiment counts: {test_sentiments_counts}")
+
+        # Save to CSV files
+        train_final_df.to_csv(train_output_path, index=False)
+        test_df.to_csv(test_output_path, index=False)
 
 class WebCrawler:
     def __init__(self, dataset_path: str) -> None:

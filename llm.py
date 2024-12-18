@@ -232,7 +232,7 @@ class FinBERTSentimentAnalyzer:
             fp16=True,
             lr_scheduler_type='cosine',
             report_to='none',
-            save_total_limit=5
+            save_total_limit=5,
         )
         
         trainer = CustomTrainer(
