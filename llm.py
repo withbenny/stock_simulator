@@ -346,3 +346,7 @@ class SentimentAnalyzerAPI:
     
     def run(self, host: str = '0.0.0.0', port: int = 8000):
         uvicorn.run(self.app, host=host, port=port)
+
+if __name__ == "__main__":
+    api = SentimentAnalyzerAPI(model_path="./distilroberta_sentiment_model/checkpoint-618")
+    api.run()

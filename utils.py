@@ -81,6 +81,23 @@ class CombineDataset:
         df.drop_duplicates(subset=['url'], inplace=True)
         df.to_csv(output_path, index=False)
     
+    def split_data(self, input_path: str, output_path: str) -> None:
+        df = pd.read_csv(input_path)
+        if 'sentiment' not in df.columns:
+            raise ValueError("Sentiment column not found in dataset")
+
+        sentiment_counts= df['sentiment'].value_counts()
+        print(sentiment_counts)
+        min_count = min(sentiment_counts)
+
+        balanced_df = []
+        for sentiment, count in sentiment_counts.items():
+            subset = df[df['sentiment'] == sentiment].sample(n=min_count, random_state=42)
+            balanced_df.append(subset)
+        balanced_df = pd.concat(balanced_df).sample(frac=1, random_state=42)
+
+        balanced_df.to_csv(output_path, index=False)
+
 class WebCrawler:
     def __init__(self, dataset_path: str) -> None:
         self.dataset_path = dataset_path
