@@ -245,7 +245,6 @@ class FinBERTSentimentAnalyzer:
         
         trainer.train()
         print(f"Training complete! Saving model to {output_dir}")
-        trainer.save_model(output_dir)
         return self.model
 
 class DistilrobertaSentimentAnalyzer(FinBERTSentimentAnalyzer):
@@ -289,10 +288,9 @@ class DistilrobertaSentimentAnalyzer(FinBERTSentimentAnalyzer):
         
         trainer.train()
         print(f"Training complete! Saving model to {output_dir}")
-        trainer.save_model(output_dir)
         return self.model
 
-def test_llm(model_path: str, texts: list) -> None:
+def test_llm(model_path: str, texts: list) -> dict:
     print(f"Loading model from {model_path}...")
     if model_path.startswith('finbert') or model_path.startswith('./finbert'):
         analyzer = FinBERTSentimentAnalyzer(model_path=model_path)
@@ -318,6 +316,7 @@ def test_llm(model_path: str, texts: list) -> None:
         print("Probabilities:")
         for sentiment, prob in result['probabilities'].items():
             print(f"{sentiment}: {prob:.4f}")
+    return result
 
 class SentimentAnalyzerAPI:
     def __init__(self, model_path: str):
@@ -348,5 +347,5 @@ class SentimentAnalyzerAPI:
         uvicorn.run(self.app, host=host, port=port)
 
 if __name__ == "__main__":
-    api = SentimentAnalyzerAPI(model_path="./distilroberta_sentiment_model/checkpoint-618")
+    api = SentimentAnalyzerAPI(model_path="finbert_sentiment_model/checkpoint-4950")
     api.run()

@@ -11,6 +11,7 @@ from collections import Counter
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 import os
+import csv
 
 class LSTMDataset(Dataset):
     def __init__(self, articles: list, sentiments: list, vocab: dict = None) -> None:
@@ -180,3 +181,66 @@ def test_lstm(model_path: str = None, vocab: dict = None, texts: list = None) ->
             print(f"\nText: {text}\nSentiment: {sentiment_label}\nProbabilities:")
             for sentiment, prob in prob_distribution.items():
                 print(f"{sentiment}: {prob:.4f}")
+
+def process_batches(model, device, padded_texts, batch_size):
+    predictions = []
+    total_samples = len(padded_texts)
+    num_batches = (total_samples + batch_size - 1) // batch_size
+
+    for batch_idx in range(num_batches):
+        start_idx = batch_idx * batch_size
+        end_idx = min(start_idx + batch_size, total_samples)
+        batch = padded_texts[start_idx:end_idx]
+
+        with torch.no_grad():
+            output = model(batch)
+            probabilities = torch.nn.functional.softmax(output, dim=1)
+            _, predicted = torch.max(probabilities, 1)
+            predictions.extend(predicted.cpu().tolist())
+
+    return predictions
+
+def test_from_csv_lstm(input_csv: str, model_path: str = None, vocab: dict = None, batch_size: int = 64):
+    save_path = "./lstm"
+    if vocab is None:
+        vocab = torch.load(f"{save_path}/vocab.pth", weights_only=False)
+    if model_path is None:
+        model_path = f"{save_path}/lstm_sentiment_model.pth"
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    sentiment_mapping = {0: "Bearish", 1: "Neutral", 2: "Bullish"}
+
+    model = LSTMModel(len(vocab), 100, 128, 3).to(device)
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+
+    articles = []
+    true_sentiments = []
+    with open(input_csv, mode="r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            articles.append(row["article"])
+            true_sentiments.append(row["sentiment"])
+
+    encoded_texts = [
+        torch.tensor([vocab.get(word, 0) for word in word_tokenize(article.lower())], dtype=torch.long)
+        for article in articles
+    ]
+    padded_texts = pad_sequence(encoded_texts, batch_first=True, padding_value=0).to(device)
+    predicted_labels = process_batches(model, device, padded_texts, batch_size)
+
+    correct_predictions = 0
+    for true_sentiment, predicted_label in zip(true_sentiments, predicted_labels):
+        predicted_sentiment = sentiment_mapping[predicted_label]
+        if predicted_sentiment == true_sentiment:
+            correct_predictions += 1
+
+    accuracy = correct_predictions / len(articles)
+    print(f"\nAccuracy: {accuracy:.2%}")
+    return accuracy
+
+def main():
+    test_from_csv_lstm("data_test.csv")
+
+if __name__ == "__main__":
+    main()
